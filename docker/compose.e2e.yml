@@ -1,0 +1,4 @@
+services:
+  node:
+    image: mcr.microsoft.com/playwright:v1.56.1-noble
+    ipc: host
