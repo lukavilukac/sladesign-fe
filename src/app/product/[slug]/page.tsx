@@ -1,3 +1,4 @@
+import { assetUrl } from '@/app/helpers/assetUrl';
 import Product from "@/app/components/Product";
 import RootLayoutEng from "@/app/layouteng";
 import {getDataForProductPage} from "@/app/api/DataProvider";
@@ -10,7 +11,7 @@ export const generateMetadata = async ({ params }: { params: Promise<{ slug: str
     title: data.product.name,
     description: data.product.description,
     openGraph: {
-      images: data.product.product_image.path
+      images: assetUrl(data.product.product_image.path)
     }
   }
 }

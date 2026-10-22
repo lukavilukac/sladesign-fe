@@ -1,4 +1,4 @@
-const picture = { id: 1, name: 'Test image', alt: 'Test accessory', path: '/favicon.ico', thumbnail_path: '/favicon.ico' };
+const picture = { id: 1, name: 'Test image', alt: 'Test accessory', path: '/storage/test-image.svg', thumbnail_path: '/storage/test-image.svg' };
 export function catalog(locale = 'sr') {
     const product = {
         id: 9001, slug: 'test-product', name: locale === 'en' ? 'Test accessory' : 'Test ukras',
@@ -19,8 +19,8 @@ export function apiResponse(path, locale) {
     if (path === '/api/products' || path.startsWith('/api/products/get-by-category-slug/')) return [product];
     if (path.startsWith('/api/products/find-by-slug/')) return product;
     if (path === '/api/products-and-categories') return [
-        { ...product, thumbnail_path: '/favicon.ico', type: locale === 'en' ? 'product' : 'proizvod' },
-        { ...category, thumbnail_path: '/favicon.ico', type: locale === 'en' ? 'category' : 'kategorija' }
+        { ...product, thumbnail_path: '/storage/test-image.svg', type: locale === 'en' ? 'product' : 'proizvod' },
+        { ...category, thumbnail_path: '/storage/test-image.svg', type: locale === 'en' ? 'category' : 'kategorija' }
     ];
     return null;
 }

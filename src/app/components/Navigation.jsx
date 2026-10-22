@@ -1,4 +1,5 @@
 'use client';
+import { assetUrl } from '@/app/helpers/assetUrl';
 
 import {Fragment, useContext, useState} from 'react';
 import { Dialog, Popover, Tab, Transition } from '@headlessui/react';
@@ -103,9 +104,7 @@ const Navigation = ({navigation, locale}) => {
                                                         >
                                                             <div className="aspect-h-1 aspect-w-1 overflow-hidden rounded-md bg-gray-100 group-hover:opacity-75">
                                                                 <img
-                                                                    src={
-                                                                        item.category_image.path
-                                                                    }
+                                                                    src={assetUrl(item.category_image.path)}
                                                                     // alt={item.category_mage.alt}
                                                                     className="object-cover object-center"
                                                                 />
@@ -241,11 +240,7 @@ const Navigation = ({navigation, locale}) => {
                                                                                         >
                                                                                             <div className="aspect-h-1 aspect-w-1 overflow-hidden rounded-md bg-gray-100 group-hover:opacity-75">
                                                                                                 <img
-                                                                                                    src={
-                                                                                                        item
-                                                                                                            .category_image
-                                                                                                            .path
-                                                                                                    }
+                                                                                                    src={assetUrl(item.category_image.path)}
                                                                                                     alt={
                                                                                                         item
                                                                                                             .category_image

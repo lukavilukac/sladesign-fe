@@ -6,9 +6,12 @@ test.beforeEach(async ({ page }) => {
     await page.route('**/*', async route => {
         const url = new URL(route.request().url());
         if (url.hostname === '127.0.0.1' || url.hostname === 'localhost') return route.continue();
-        if (url.hostname === 'app.sladesignshop.com' && url.pathname.startsWith('/api/')) {
+        if (['app.sladesignshop.com', 'admin.sladesignshop.com'].includes(url.hostname) && url.pathname.startsWith('/api/')) {
             if (route.request().method() !== 'GET') return route.fulfill({ status: 200, json: { id: 'test-order' } });
             return route.fulfill({ json: apiResponse(url.pathname, route.request().headers().locale) });
+        }
+        if (url.hostname === 'admin.sladesignshop.com' && url.pathname === '/storage/test-image.svg') {
+            return route.fulfill({ contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><rect width="20" height="20" fill="red"/></svg>' });
         }
         return route.abort();
     });
@@ -28,6 +31,11 @@ for (const locale of ['sr', 'en']) {
             const response = await page.goto(path);
             expect(response?.status()).toBe(200);
             await expect(page.getByRole('navigation', { name: 'Top' })).toBeVisible();
+            if (path !== '/about' && path !== '/o-meni') {
+                const image = page.locator('img[src="https://admin.sladesignshop.com/storage/test-image.svg"]').first();
+                await expect(image).toBeAttached();
+                await expect.poll(() => image.evaluate((element: HTMLImageElement) => element.naturalWidth)).toBeGreaterThan(0);
+            }
             expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBeTruthy();
         }
         await page.goto(home);

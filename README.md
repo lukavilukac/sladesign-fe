@@ -35,6 +35,13 @@ URL; requests made inside the Node container can reach host services through
 `host.docker.internal` on Docker Desktop. Laravel must allow the frontend
 origin in its CORS configuration when using a different origin.
 
+API image paths starting with `/storage/` or `storage/` use
+`https://admin.sladesignshop.com` as their origin. To use another image host,
+set `NEXT_PUBLIC_ASSET_BASE_URL=https://your-image-host.example` in `.env.local`
+or the deployment environment before running `npm run build`. Rebuild and
+redeploy after changing it. Use the origin without `/api` or `/storage`.
+Absolute image URLs and local assets such as `/icon.jpg` remain unchanged.
+
 ### Without Docker
 
 First, run the development server:

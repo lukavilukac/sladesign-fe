@@ -1,3 +1,4 @@
+import { assetUrl } from '@/app/helpers/assetUrl';
 const TrendingProducts = async ({products, productHref}) => {
 
     return (
@@ -12,7 +13,7 @@ const TrendingProducts = async ({products, productHref}) => {
                         <div key={product.id} className="group relative">
                             <div className="h-56 w-full overflow-hidden rounded-md bg-gray-200 group-hover:opacity-75 lg:h-72 xl:h-80">
                                 <img
-                                    src={product.product_image.path}
+                                    src={assetUrl(product.product_image.path)}
                                     alt={product.product_image.alt}
                                     className="h-full w-full object-cover object-center"
                                 />

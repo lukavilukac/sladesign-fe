@@ -1,4 +1,5 @@
 'use client'
+import { assetUrl } from '@/app/helpers/assetUrl';
 
 import {Fragment, useContext, useEffect, useState} from 'react'
 import { ChevronUpIcon } from '@heroicons/react/20/solid'
@@ -166,7 +167,7 @@ const Checkout = ({locale}) => {
                                 {state.cart.order_lines.map((product) => (
                                     <li key={`${product.id}-${JSON.stringify(product.modifiers)}`} className="flex items-start space-x-4 py-6">
                                         <img
-                                            src={product.product_image.path}
+                                            src={assetUrl(product.product_image.path)}
                                             alt={product.product_image.alt}
                                             className="h-20 w-20 flex-none rounded-md object-cover object-center"
                                         />

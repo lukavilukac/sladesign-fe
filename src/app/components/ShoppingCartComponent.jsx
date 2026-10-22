@@ -1,3 +1,4 @@
+import { assetUrl } from '@/app/helpers/assetUrl';
 import {Fragment, useContext, useEffect} from 'react'
 import { Dialog, Transition } from '@headlessui/react'
 import { XMarkIcon } from '@heroicons/react/24/outline'
@@ -79,7 +80,7 @@ const ShoppingCartComponent = ({locale, open, setOpen}) => {
                                             {state.cart.order_lines.map((product, productIdx) => (
                                                 <li key={`${product.id}-${JSON.stringify(product.modifiers)}`} className="flex py-8 text-sm sm:items-center">
                                                     <img
-                                                        src={product.product_image.thumbnail_path}
+                                                        src={assetUrl(product.product_image.thumbnail_path)}
                                                         alt={product.product_image.alt}
                                                         className="h-24 w-24 flex-none rounded-lg border border-gray-200 sm:h-32 sm:w-32"
                                                     />

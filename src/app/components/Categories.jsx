@@ -1,4 +1,5 @@
 'use client'
+import { assetUrl } from '@/app/helpers/assetUrl';
 
 import {Fragment, useState} from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
@@ -60,7 +61,7 @@ const Categories = ({categories, products}) => {
                                         {categories.map((category) => (
                                             <li className="flex items-center" key={category.name}>
                                                 <div className="h-8 w-8 flex-shrink-0">
-                                                    {<img className="h-8 w-8 rounded-full" src={category.category_image.thumbnail_path} alt="" />}
+                                                    {<img className="h-8 w-8 rounded-full" src={assetUrl(category.category_image.thumbnail_path)} alt="" />}
                                                 </div>
 
                                                 <a
@@ -125,7 +126,7 @@ const Categories = ({categories, products}) => {
                                 {categories.map((category) => (
                                     <li className="flex items-center" key={category.name}>
                                         <div className="h-8 w-8 flex-shrink-0">
-                                            {<img className="h-8 w-8 rounded-full" src={category.category_image.thumbnail_path} alt="" />}
+                                            {<img className="h-8 w-8 rounded-full" src={assetUrl(category.category_image.thumbnail_path)} alt="" />}
                                         </div>
 
                                         <a
@@ -153,7 +154,7 @@ const Categories = ({categories, products}) => {
                                             >
                                                 <div className="bg-gray-200 max-w-full group-hover:opacity-75">
                                                     <img
-                                                        src={product.product_image.path}
+                                                        src={assetUrl(product.product_image.path)}
                                                         alt={product.product_image.alt}
                                                         className="h-full w-full object-cover object-center sm:h-full sm:w-full"
                                                     />

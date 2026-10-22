@@ -1,4 +1,5 @@
 'use client'
+import { assetUrl } from '@/app/helpers/assetUrl';
 
 import { Tab } from "@headlessui/react";
 import React, { useContext, useState } from "react";
@@ -83,7 +84,7 @@ const Product = ({ product, locale }) => {
                                             <>
                                                 <span className="sr-only">{image.name}</span>
                                                 <span className="absolute inset-0 overflow-hidden rounded-md">
-                                                    <img src={image.path} alt={image.alt} className="h-full w-full object-cover object-center" />
+                                                    <img src={assetUrl(image.path)} alt={image.alt} className="h-full w-full object-cover object-center" />
                                                 </span>
                                                 <span
                                                     className={classNames(
@@ -103,7 +104,7 @@ const Product = ({ product, locale }) => {
                             {updatedProduct.product_images.map((image) => (
                                 <Tab.Panel key={image.id}>
                                     <img
-                                        src={image.path}
+                                        src={assetUrl(image.path)}
                                         alt={image.alt}
                                         className="h-full w-full object-cover object-center sm:rounded-lg"
                                     />

@@ -1,3 +1,4 @@
+import { assetUrl } from '@/app/helpers/assetUrl';
 import React, {Fragment, useEffect, useState} from 'react'
 import { Combobox, Dialog, Transition } from '@headlessui/react'
 import { MagnifyingGlassIcon } from '@heroicons/react/20/solid'
@@ -131,7 +132,7 @@ const SearchComponent = ({locale}) => {
                                                                 >
                                                                     {({ active }) => (
                                                                         <>
-                                                                            <img src={item.thumbnail_path} alt="" className="h-6 w-6 flex-none rounded-full" />
+                                                                            <img src={assetUrl(item.thumbnail_path)} alt="" className="h-6 w-6 flex-none rounded-full" />
                                                                             <span className="ml-3 flex-auto truncate">{item.name}</span>
                                                                             {active && (
                                                                                 <ChevronRightIcon
@@ -149,7 +150,7 @@ const SearchComponent = ({locale}) => {
                                                     {activeOption && (
                                                         <div className="hidden h-96 w-1/2 flex-none flex-col divide-y divide-gray-100 overflow-y-auto sm:flex">
                                                             <div className="flex-none p-6 text-center">
-                                                                <img src={activeOption.thumbnail_path} alt="" className="mx-auto h-16 w-16 rounded-full" />
+                                                                <img src={assetUrl(activeOption.thumbnail_path)} alt="" className="mx-auto h-16 w-16 rounded-full" />
                                                                 <h2 className="mt-3 font-semibold text-gray-900">{activeOption.name}</h2>
                                                                 <p className="text-sm leading-6 text-gray-500">{activeOption.type}</p>
                                                             </div>

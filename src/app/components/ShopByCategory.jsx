@@ -1,3 +1,4 @@
+import { assetUrl } from '@/app/helpers/assetUrl';
 import {shopByCategoryString} from "@/app/Lang/LangHelper";
 
 const ShopByCategory = async ({categories, categoryHref, locale}) => {
@@ -20,7 +21,7 @@ const ShopByCategory = async ({categories, categoryHref, locale}) => {
                                             className="relative flex h-80 w-56 flex-col overflow-hidden rounded-lg p-6 hover:opacity-75 xl:w-auto"
                                         >
                     <span aria-hidden="true" className="absolute inset-0">
-                      <img src={category.category_image.path} alt="" className="h-full w-full object-cover object-center" />
+                      <img src={assetUrl(category.category_image.path)} alt="" className="h-full w-full object-cover object-center" />
                     </span>
                                             <span
                                                 aria-hidden="true"
