@@ -37,7 +37,7 @@ const Landing = ({locale}) => {
                 </div>
                 <div className="h-48 w-full sm:h-64 lg:absolute lg:right-0 lg:top-0 lg:h-full lg:w-1/2">
                     <img
-                        src="https://app.sladesignshop.com/storage/front/homepage/lana-model.jpg"
+                        src="https://admin.sladesignshop.com/images/front/homepage/lana-model.jpg"
                         alt={locale === 'en' ? 'Flower broch, head band' : 'Cvetni Bros, trakica za glavu'}
                         className="h-full w-full object-cover object-center"
                     />

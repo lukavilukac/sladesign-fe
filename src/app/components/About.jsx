@@ -15,7 +15,7 @@ const About = ({locale}) => {
                         <div className="absolute inset-0 bg-gray-900 opacity-20" />
                         <img
                             className="h-auto w-full object-cover shadow-lg opacity-50"
-                            src="https://app.sladesignshop.com/storage/front/about/slavica-babic.jpg"
+                            src="https://admin.sladesignshop.com/images/front/about/slavica-babic.jpg"
                             alt="Slavica Babic - Sla Design"
                         />
                         {/* Moved part for mobile */}
