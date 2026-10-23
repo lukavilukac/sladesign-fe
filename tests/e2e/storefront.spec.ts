@@ -24,6 +24,33 @@ for (const locale of ['sr', 'en']) {
     const checkout = locale === 'sr' ? '/porudzbina' : '/checkout';
     const add = locale === 'sr' ? 'Dodaj u Korpu' : 'Add to Cart';
 
+    test(`${locale}: cheapest modifiers are selected and sorted numerically`, async ({ page }) => {
+        await page.goto(locale === 'sr' ? '/proizvod/test-modifiers' : '/product/test-modifiers');
+        await expect(page.getByRole('button', { name: 'Size Small', exact: true })).toBeVisible();
+        const finish = page.getByRole('button', { name: 'Finish Standard', exact: true });
+        await expect(finish).toBeVisible();
+        await expect(page.getByText('1100 rsd', { exact: true })).toBeVisible();
+        await finish.click();
+        await expect(page.getByRole('option')).toHaveText(['Standard', 'Gloss', 'Premium']);
+        await page.keyboard.press('Escape');
+        await page.getByRole('button', { name: 'Size Small', exact: true }).click();
+        await expect(page.getByRole('option')).toHaveText(['Small', 'Large']);
+        await page.keyboard.press('Escape');
+        await page.getByRole('button', { name: add, exact: true }).click();
+        const cart = () => page.evaluate(() => JSON.parse(localStorage.getItem('cart') || '{}'));
+        await expect.poll(async () => (await cart()).subTotal).toBe(1100);
+        expect((await cart()).order_lines[0].modifiers['20'].id).toBe(202);
+        await finish.click();
+        await page.getByRole('option', { name: 'Gloss', exact: true }).click();
+        await expect(page.getByText('1120 rsd', { exact: true })).toBeVisible();
+        await page.getByRole('button', { name: add, exact: true }).click();
+        await expect.poll(async () => (await cart()).subTotal).toBe(2220);
+        expect((await cart()).order_lines).toHaveLength(2);
+        await page.reload();
+        await expect(page.getByRole('button', { name: 'Finish Standard', exact: true })).toBeVisible();
+        expect((await cart()).order_lines[1].modifiers['20'].id).toBe(203);
+    });
+
     test(`${locale}: catalog, search, navigation and responsive layout`, async ({ page, isMobile }) => {
         const errors: string[] = [];
         page.on('pageerror', error => errors.push(error.message));

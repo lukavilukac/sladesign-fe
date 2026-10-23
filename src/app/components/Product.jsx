@@ -18,8 +18,14 @@ const Product = ({ product, locale }) => {
 
     function initializeProduct(product) {
         const basePrice = Number(product.basePrice ?? product.price ?? 0);
+        const modifierGroups = product.modifier_groups.map(group => ({
+            ...group,
+            modifiers: [...group.modifiers].sort(
+                (a, b) => Number(a.price || 0) - Number(b.price || 0)
+            )
+        }));
         const defaultModifiers = Object.fromEntries(
-            product.modifier_groups.map(group => [group.id, group.modifiers[0]])
+            modifierGroups.map(group => [group.id, group.modifiers[0]])
         );
 
         // Calculate total price based on modifiers
@@ -28,6 +34,7 @@ const Product = ({ product, locale }) => {
 
         return {
             ...product,
+            modifier_groups: modifierGroups,
             modifiers: defaultModifiers,
             price: basePrice,   // Keep the base price
             totalPrice: totalPrice // Add totalPrice
