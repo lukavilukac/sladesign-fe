@@ -1,7 +1,7 @@
 'use client'
 import { assetUrl } from '@/app/helpers/assetUrl';
 
-import {Fragment, useContext, useEffect, useState} from 'react'
+import {Fragment, useContext, useEffect, useRef, useState} from 'react'
 import { ChevronUpIcon } from '@heroicons/react/20/solid'
 import { Popover, Transition } from '@headlessui/react'
 import {CartContext} from "../context/CartContext";
@@ -23,12 +23,24 @@ import {
 import { object, string } from "yup";
 import { useFormik } from "formik";
 import AxiosInstance from "../api/AxiosInstance";
+import { LangContent } from '../Lang/LangContent';
 import {countries} from "../static/countries";
 const Checkout = ({locale}) => {
 
     const state = useContext(CartContext);
     const [openConfirmationModal, setOpenConfirmationModal] = useState(false);
     const [orderFailed, setOrderFailed] = useState(false);
+    const [emailChecked, setEmailChecked] = useState(false);
+    const [returningCustomer, setReturningCustomer] = useState(false);
+    const [lookupPending, setLookupPending] = useState(false);
+    const [lookupError, setLookupError] = useState('');
+    const lookupInFlight = useRef(false);
+    const detailsRef = useRef(null);
+    const lookupText = LangContent[locale].customerLookup;
+
+    useEffect(() => {
+        if (emailChecked) detailsRef.current?.focus();
+    }, [emailChecked]);
 
     const updateShippingByCountry = (countryName) => {
         state.recalculateShippingPrice(countryName);
@@ -84,8 +96,59 @@ const Checkout = ({locale}) => {
 
     const formik = useFormik({
         initialValues: initialFormValues,
-        validationSchema: checkoutSchema,
+        validationSchema: emailChecked ? checkoutSchema : object({ email_address: string().trim().required().email() }),
         onSubmit: async (values) => {
+            if (!emailChecked) {
+                if (lookupInFlight.current) return;
+                lookupInFlight.current = true;
+                setLookupPending(true);
+                setLookupError('');
+                const email = values.email_address.trim();
+                try {
+                    const { data } = await AxiosInstance.post('customers/lookup', { email }, {
+                        headers: { Locale: locale }
+                    });
+                    if (typeof data.exists !== 'boolean' || (data.exists && !data.user)) {
+                        throw new Error('Invalid lookup response');
+                    }
+                    const user = data.exists ? data.user : {};
+                    const shipping = data.exists ? (data.shipping ?? user) : {};
+                    const countryName = shipping.country ?? 'Serbia';
+                    const country = countries.find(item => item.name === countryName);
+                    let phone = shipping.phone_number ?? user.phone_number ?? '';
+                    let countryCode = country?.phone ?? '381';
+                    const internationalPhone = phone.replace(/[\s()-]/g, '').replace(/^00/, '+');
+                    if (internationalPhone.startsWith('+')) {
+                        const phoneCountry = [...countries].sort((a, b) => b.phone.length - a.phone.length)
+                            .find(item => internationalPhone.startsWith(`+${item.phone}`));
+                        if (phoneCountry) {
+                            countryCode = phoneCountry.phone;
+                            phone = internationalPhone.slice(countryCode.length + 1);
+                        }
+                    }
+                    formik.resetForm({ values: {
+                        email_address: email,
+                        first_name: user.first_name ?? '',
+                        last_name: user.last_name ?? '',
+                        phone_number: phone,
+                        country_name: countryName,
+                        country_code: countryCode,
+                        address: shipping.address ?? '',
+                        apartment: shipping.apartment ?? '',
+                        city: shipping.city ?? '',
+                        postal_code: shipping.postal_code ?? ''
+                    } });
+                    updateShippingByCountry(countryName);
+                    setReturningCustomer(data.exists);
+                    setEmailChecked(true);
+                } catch (error) {
+                    setLookupError(error.response?.status === 429 ? lookupText.rateLimit : lookupText.error);
+                } finally {
+                    lookupInFlight.current = false;
+                    setLookupPending(false);
+                }
+                return;
+            }
             values.price = state.cart.subTotal;
             //state.cart.order_lines handle if it is empty
             values.order_lines = state.cart.order_lines.map((orderLine) => {
@@ -260,7 +323,7 @@ const Checkout = ({locale}) => {
                         </div>
                     </section>
 
-                    <form onSubmit={formik.handleSubmit} className="px-4 pb-36 pt-16 sm:px-6 lg:col-start-1 lg:row-start-1 lg:px-0 lg:pb-16">
+                    <form noValidate onSubmit={formik.handleSubmit} className="px-4 pb-36 pt-16 sm:px-6 lg:col-start-1 lg:row-start-1 lg:px-0 lg:pb-16">
                         <div className="mx-auto max-w-lg lg:max-w-none">
                             <section aria-labelledby="contact-info-heading">
                                 <h2 id="contact-info-heading" className="text-lg font-medium text-gray-900">
@@ -277,11 +340,17 @@ const Checkout = ({locale}) => {
                                             id="email_address"
                                             name="email_address"
                                             autoComplete="email"
+                                            value={formik.values.email_address}
+                                            disabled={lookupPending || formik.isSubmitting}
+                                            aria-invalid={Boolean(formik.touched.email_address && formik.errors.email_address)}
                                             className={`block w-full rounded-md ${
                                                 (formik.touched.email_address && formik.errors.email_address) ? 'border-red-500' : 'border-gray-300'
                                             } shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm`}
                                             onChange={(e) => {
                                                 formik.handleChange(e);
+                                                setEmailChecked(false);
+                                                setReturningCustomer(false);
+                                                setLookupError('');
                                             }}
                                             onBlur={formik.handleBlur}
                                         />
@@ -291,6 +360,19 @@ const Checkout = ({locale}) => {
                                     </div>
                                 </div>
 
+                                {lookupError && <p role="alert" className="mt-4 text-sm text-red-600">{lookupError}</p>}
+                                {!emailChecked && (
+                                    <button type="submit" disabled={lookupPending || formik.isSubmitting}
+                                        className="mt-6 w-full rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 sm:w-auto">
+                                        {lookupPending ? lookupText.loading : lookupText.next}
+                                    </button>
+                                )}
+                                {emailChecked && returningCustomer && (
+                                    <p className="mt-6 text-sm text-gray-700" role="status">
+                                        {lookupText.returning}
+                                    </p>
+                                )}
+                                {emailChecked && <>
                                 <div className="mt-6">
                                     <label htmlFor="phone_number" className="block text-sm font-medium leading-6 text-gray-900">
                                         {getPhoneNumber(locale)}
@@ -309,7 +391,6 @@ const Checkout = ({locale}) => {
                                                 value={formik.values.country_code}
                                                 onChange={formik.handleChange}
                                                 onBlur={formik.handleBlur}
-                                                defaultValue={"381"}
                                                 className="h-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                                             >
                                                 {countries.map(country => (
@@ -324,6 +405,7 @@ const Checkout = ({locale}) => {
                                                 type="text"
                                                 name="phone_number"
                                                 id="phone_number"
+                                                ref={detailsRef}
                                                 value={formik.values.phone_number}
                                                 onChange={(e) => {
                                                     formik.handleChange(e);
@@ -351,6 +433,7 @@ const Checkout = ({locale}) => {
                                             type="text"
                                             id="first_name"
                                             name="first_name"
+                                            value={formik.values.first_name}
                                             autoComplete="first_name"
                                             className={`block w-full rounded-md ${
                                                 (formik.touched.first_name && formik.errors.first_name) ? 'border-red-500' : 'border-gray-300'
@@ -375,6 +458,7 @@ const Checkout = ({locale}) => {
                                             type="text"
                                             id="last_name"
                                             name="last_name"
+                                            value={formik.values.last_name}
                                             autoComplete="last_name"
                                             className={`block w-full rounded-md ${
                                                 (formik.touched.last_name && formik.errors.last_name) ? 'border-red-500' : 'border-gray-300'
@@ -389,8 +473,10 @@ const Checkout = ({locale}) => {
                                         )}
                                     </div>
                                 </div>
+                                </>}
                             </section>
 
+                            {emailChecked && <>
                             <section aria-labelledby="shipping-heading" className="mt-10">
                                 <h2 id="shipping-heading" className="text-lg font-medium text-gray-900">
                                     {getShippingAddress(locale)}
@@ -407,6 +493,7 @@ const Checkout = ({locale}) => {
                                                 type="text"
                                                 id="address"
                                                 name="address"
+                                                value={formik.values.address}
                                                 autoComplete="street-address"
                                                 className={`block w-full rounded-md ${
                                                     (formik.touched.address && formik.errors.address) ? 'border-red-500' : 'border-gray-300'
@@ -431,6 +518,7 @@ const Checkout = ({locale}) => {
                                                 type="text"
                                                 id="apartment"
                                                 name="apartment"
+                                                value={formik.values.apartment}
                                                 className={`block w-full rounded-md ${
                                                     (formik.touched.apartment && formik.errors.apartment) ? 'border-red-500' : 'border-gray-300'
                                                 } shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm`}
@@ -476,6 +564,7 @@ const Checkout = ({locale}) => {
                                                 type="text"
                                                 id="city"
                                                 name="city"
+                                                value={formik.values.city}
                                                 autoComplete="address-level2"
                                                 className={`block w-full rounded-md ${
                                                     (formik.touched.city && formik.errors.city) ? 'border-red-500' : 'border-gray-300'
@@ -500,6 +589,7 @@ const Checkout = ({locale}) => {
                                                 type="text"
                                                 id="postal_code"
                                                 name="postal_code"
+                                                value={formik.values.postal_code}
                                                 autoComplete="postal-code"
                                                 className={`block w-full rounded-md ${
                                                     (formik.touched.postal_code && formik.errors.postal_code) ? 'border-red-500' : 'border-gray-300'
@@ -520,6 +610,7 @@ const Checkout = ({locale}) => {
                             <div className="mt-10 border-t border-gray-200 pt-6 sm:flex sm:items-center sm:justify-between">
                                 <button
                                     type="submit"
+                                    disabled={formik.isSubmitting}
                                     className="w-full rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-50 sm:order-last sm:ml-6 sm:w-auto"
                                 >
                                     {getCheckout(locale)}
@@ -529,6 +620,7 @@ const Checkout = ({locale}) => {
                                     {getWillBeCharged(locale)}
                                 </p>
                             </div>
+                            </>}
                         </div>
                     </form>
                 </main>

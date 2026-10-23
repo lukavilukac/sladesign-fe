@@ -1,5 +1,12 @@
 export const LangContent = {
     sr: {
+        customerLookup: {
+            next: 'Dalje',
+            loading: 'Proveravamo…',
+            returning: 'Vi ste već naručivali. Proverite da li su podaci ispravni.',
+            error: 'Provera email adrese nije uspela. Pokušajte ponovo.',
+            rateLimit: 'Previše pokušaja. Sačekajte minut pa pokušajte ponovo.'
+        },
         footerNavigation: {
             main: [
                 { name: 'O meni', href: '/o-meni' }
@@ -154,6 +161,13 @@ export const LangContent = {
         }
     },
     en: {
+        customerLookup: {
+            next: 'Next',
+            loading: 'Checking…',
+            returning: 'You have ordered before. Please check that your details are correct.',
+            error: 'We could not check your email address. Please try again.',
+            rateLimit: 'Too many attempts. Please wait a minute and try again.'
+        },
         footerNavigation: {
             main: [
                 { name: 'About', href: '/about' },

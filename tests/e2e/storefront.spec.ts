@@ -7,6 +7,7 @@ test.beforeEach(async ({ page }) => {
         const url = new URL(route.request().url());
         if (url.hostname === '127.0.0.1' || url.hostname === 'localhost') return route.continue();
         if (['app.sladesignshop.com', 'admin.sladesignshop.com'].includes(url.hostname) && url.pathname.startsWith('/api/')) {
+            if (url.pathname.endsWith('/customers/lookup')) return route.fulfill({ json: { exists: false, user: null, shipping: null } });
             if (route.request().method() !== 'GET') return route.fulfill({ status: 200, json: { id: 'test-order' } });
             return route.fulfill({ json: apiResponse(url.pathname, route.request().headers().locale) });
         }
@@ -120,8 +121,11 @@ for (const locale of ['sr', 'en']) {
             const submit = page.locator('form button[type="submit"]');
             await submit.click();
             await expect(page.getByText(locale === 'sr' ? 'Polje nije validno!' : 'Field is invalid!').first()).toBeVisible();
+            await page.locator('[name="email_address"]').fill('test@example.invalid');
+            await submit.click();
+            await expect(page.locator('[name="first_name"]')).toBeVisible();
             const values = { email_address: 'test@example.invalid', phone_number: '123456789', first_name: 'Test', last_name: 'Customer', address: 'Synthetic street 1', city: 'Test City', postal_code: '11000' };
-            for (const [name, value] of Object.entries(values)) await page.locator(`[name="${name}"]`).fill(value);
+            for (const [name, value] of Object.entries(values).filter(([name]) => name !== 'email_address')) await page.locator(`[name="${name}"]`).fill(value);
             if (orderFails) {
                 await page.route('**/orders/create', route => route.fulfill({ status: 500, json: { message: 'Internal server details' } }));
             }
@@ -151,6 +155,8 @@ test('free shipping threshold and country change', async ({ page, isMobile }) =>
     const cart = () => page.evaluate(() => JSON.parse(localStorage.getItem('cart') || '{}'));
     await expect.poll(async () => (await cart()).subTotal).toBe(5500);
     await expect.poll(async () => (await cart()).shipping).toBe(0);
+    await page.locator('[name="email_address"]').fill('test@example.invalid');
+    await page.getByRole('button', { name: 'Next', exact: true }).click();
     await page.locator('[name="country_name"]').selectOption({ label: 'Germany' });
     await expect.poll(async () => (await cart()).shipping).toBeGreaterThan(0);
     if (isMobile) {
@@ -160,3 +166,56 @@ test('free shipping threshold and country change', async ({ page, isMobile }) =>
     }
     expect(errors).toEqual([]);
 });
+
+for (const locale of ['sr', 'en']) {
+    for (const hasShipping of [true, false]) {
+        test(`${locale}: returning customer lookup (shipping ${hasShipping})`, async ({ page }) => {
+            const requests: string[] = [];
+            await page.route('**/customers/lookup', async route => {
+                requests.push(route.request().postDataJSON().email);
+                expect(route.request().headers().locale).toBe(locale);
+                await route.fulfill({ json: {
+                    exists: true,
+                    user: { first_name: 'Petar', last_name: 'Petrović', phone_number: '+381691111111', country: 'Serbia', city: 'Novi Sad', address: 'Primer 12', apartment: '3' },
+                    shipping: hasShipping ? { country: 'Serbia', city: 'Beograd', address: 'Nova 15', apartment: '', phone_number: '+381692222222', postal_code: null } : null
+                } });
+            });
+            await page.goto(locale === 'sr' ? '/porudzbina' : '/checkout');
+            await expect(page.locator('#first_name')).toBeHidden();
+            await page.locator('#email_address').fill('test@example.invalid');
+            await page.locator('#email_address').press('Enter');
+            await expect(page.getByRole('status')).toContainText(locale === 'sr' ? 'Vi ste već naručivali' : 'You have ordered before');
+            await expect(page.locator('#first_name')).toHaveValue('Petar');
+            await expect(page.locator('#city')).toHaveValue(hasShipping ? 'Beograd' : 'Novi Sad');
+            await expect(page.locator('#address')).toHaveValue(hasShipping ? 'Nova 15' : 'Primer 12');
+            await expect(page.locator('#apartment')).toHaveValue(hasShipping ? '' : '3');
+            await expect(page.locator('#phone_number')).toHaveValue(hasShipping ? '692222222' : '691111111');
+            await expect(page.locator('#country_code')).toHaveValue('381');
+            await expect(page.locator('#postal_code')).toHaveValue('');
+            await page.locator('form button[type="submit"]').click();
+            await expect(page.locator('#postal_code')).toHaveClass(/border-red-500/);
+            expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBeTruthy();
+            await page.locator('#email_address').fill('new@example.invalid');
+            await expect(page.locator('#first_name')).toBeHidden();
+            await page.route('**/customers/lookup', route => route.fulfill({ json: { exists: false, user: null, shipping: null } }));
+            await page.locator('form button[type="submit"]').click();
+            await expect(page.locator('#first_name')).toHaveValue('');
+            await expect(page.locator('#address')).toHaveValue('');
+            expect(requests).toEqual(['test@example.invalid']);
+        });
+    }
+    test(`${locale}: lookup failures can be retried`, async ({ page }) => {
+        await page.route('**/customers/lookup', route => route.fulfill({ status: 429, json: {} }));
+        await page.goto(locale === 'sr' ? '/porudzbina' : '/checkout');
+        await page.locator('#email_address').fill('test@example.invalid');
+        await page.locator('form button[type="submit"]').click();
+        await expect(page.locator('form').getByRole('alert')).toContainText(locale === 'sr' ? 'Previše pokušaja' : 'Too many attempts');
+        await expect(page.locator('#first_name')).toBeHidden();
+        await page.route('**/customers/lookup', route => route.fulfill({ status: 500, json: {} }));
+        await page.locator('form button[type="submit"]').click();
+        await expect(page.locator('form').getByRole('alert')).toContainText(locale === 'sr' ? 'Provera email adrese nije uspela' : 'We could not check');
+        await page.route('**/customers/lookup', route => route.fulfill({ json: { exists: false } }));
+        await page.locator('form button[type="submit"]').click();
+        await expect(page.locator('#first_name')).toBeVisible();
+    });
+}
