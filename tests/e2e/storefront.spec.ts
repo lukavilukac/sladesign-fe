@@ -90,47 +90,56 @@ for (const locale of ['sr', 'en']) {
         expect(errors).toEqual([]);
     });
 
-    test(`${locale}: modifiers, cart persistence, quantities and mocked checkout`, async ({ page }) => {
-        const errors: string[] = [];
-        page.on('pageerror', error => errors.push(error.message));
-        await page.goto(product);
-        await expect(page.getByRole('heading', { level: 1 })).toContainText(locale === 'sr' ? 'Test ukras' : 'Test accessory');
-        await page.getByRole('tab', { name: 'Second image' }).click();
-        await page.getByRole('button', { name: add, exact: true }).click();
-        await expect(page.locator('.Toastify__toast')).toBeVisible();
-        await page.getByRole('button', { name: 'Size Small', exact: true }).click();
-        await page.getByRole('option', { name: 'Large', exact: true }).click();
-        await page.getByRole('button', { name: add, exact: true }).click();
-        const cart = () => page.evaluate(() => JSON.parse(localStorage.getItem('cart') || '{}'));
-        await expect.poll(async () => (await cart()).subTotal).toBe(2400);
-        expect((await cart()).order_lines).toHaveLength(2);
-        await page.reload();
-        // The current cart trigger is attached to the shopping-bag icon.
-        await page.getByRole('link', { name: /items in cart, view bag/ }).locator('svg').click();
-        const dialog = page.getByRole('dialog');
-        await expect(dialog).toBeVisible();
-        await dialog.locator('select').first().selectOption('3');
-        await expect.poll(async () => (await cart()).subTotal).toBe(4600);
-        await dialog.getByRole('button', { name: locale === 'sr' ? 'Izbaci' : 'Remove', exact: true }).last().click();
-        await expect.poll(async () => (await cart()).order_lines.length).toBe(1);
-        await dialog.getByRole('link', { name: locale === 'sr' ? 'Nastavi na Plaćanje' : 'Continue to Payment' }).click();
-        await expect(page).toHaveURL(new RegExp(`${checkout}$`));
-        await expect.poll(async () => (await cart()).shipping).toBeGreaterThan(0);
-        const submit = page.locator('form button[type="submit"]');
-        await submit.click();
-        await expect(page.getByText(locale === 'sr' ? 'Polje nije validno!' : 'Field is invalid!').first()).toBeVisible();
-        const values = { email_address: 'test@example.invalid', phone_number: '123456789', first_name: 'Test', last_name: 'Customer', address: 'Synthetic street 1', city: 'Test City', postal_code: '11000' };
-        for (const [name, value] of Object.entries(values)) await page.locator(`[name="${name}"]`).fill(value);
-        const request = page.waitForRequest(r => r.url().endsWith('/orders/create') && r.method() === 'POST');
-        await submit.click();
-        const body = (await request).postDataJSON();
-        expect(body.order_lines).toEqual([{ price: 1100, quantity: 3, product_id: 9001, modifier_ids: [101] }]);
-        expect(body.price).toBe(3300);
-        await expect(page.getByRole('heading', { name: locale === 'sr' ? 'Uspešna porudžbina!' : 'Successful order!' })).toBeVisible();
-        await page.getByRole('button', { name: locale === 'sr' ? 'Nazad na početnu stranu' : 'Back to home page' }).click();
-        await expect.poll(async () => (await cart()).order_lines?.length).toBe(0);
-        expect(errors).toEqual([]);
-    });
+    for (const orderFails of [false, true]) {
+        test(`${locale}: modifiers, cart persistence, quantities and mocked checkout (${orderFails ? 'error' : 'success'})`, async ({ page }) => {
+            const errors: string[] = [];
+            page.on('pageerror', error => errors.push(error.message));
+            await page.goto(product);
+            await expect(page.getByRole('heading', { level: 1 })).toContainText(locale === 'sr' ? 'Test ukras' : 'Test accessory');
+            await page.getByRole('tab', { name: 'Second image' }).click();
+            await page.getByRole('button', { name: add, exact: true }).click();
+            await expect(page.locator('.Toastify__toast')).toBeVisible();
+            await page.getByRole('button', { name: 'Size Small', exact: true }).click();
+            await page.getByRole('option', { name: 'Large', exact: true }).click();
+            await page.getByRole('button', { name: add, exact: true }).click();
+            const cart = () => page.evaluate(() => JSON.parse(localStorage.getItem('cart') || '{}'));
+            await expect.poll(async () => (await cart()).subTotal).toBe(2400);
+            expect((await cart()).order_lines).toHaveLength(2);
+            await page.reload();
+            // The current cart trigger is attached to the shopping-bag icon.
+            await page.getByRole('link', { name: /items in cart, view bag/ }).locator('svg').click();
+            const dialog = page.getByRole('dialog');
+            await expect(dialog.getByRole('heading', { level: 2 }).first()).toBeVisible();
+            await dialog.locator('select').first().selectOption('3');
+            await expect.poll(async () => (await cart()).subTotal).toBe(4600);
+            await dialog.getByRole('button', { name: locale === 'sr' ? 'Izbaci' : 'Remove', exact: true }).last().click();
+            await expect.poll(async () => (await cart()).order_lines.length).toBe(1);
+            await dialog.getByRole('link', { name: locale === 'sr' ? 'Nastavi na Plaćanje' : 'Continue to Payment' }).click();
+            await expect(page).toHaveURL(new RegExp(`${checkout}$`));
+            await expect.poll(async () => (await cart()).shipping).toBeGreaterThan(0);
+            const submit = page.locator('form button[type="submit"]');
+            await submit.click();
+            await expect(page.getByText(locale === 'sr' ? 'Polje nije validno!' : 'Field is invalid!').first()).toBeVisible();
+            const values = { email_address: 'test@example.invalid', phone_number: '123456789', first_name: 'Test', last_name: 'Customer', address: 'Synthetic street 1', city: 'Test City', postal_code: '11000' };
+            for (const [name, value] of Object.entries(values)) await page.locator(`[name="${name}"]`).fill(value);
+            if (orderFails) {
+                await page.route('**/orders/create', route => route.fulfill({ status: 500, json: { message: 'Internal server details' } }));
+            }
+            const request = page.waitForRequest(r => r.url().endsWith('/orders/create') && r.method() === 'POST');
+            await submit.click();
+            const body = (await request).postDataJSON();
+            expect(body.order_lines).toEqual([{ price: 1100, quantity: '3', product_id: 9001, modifier_ids: [101] }]);
+            expect(body.price).toBe(3300);
+            await expect(page.getByRole('heading', { name: orderFails
+                ? (locale === 'sr' ? 'Ooops! Greška u sistemu.' : 'Oops! A system error occurred.')
+                : (locale === 'sr' ? 'Uspešna porudžbina!' : 'Successful order!') })).toBeVisible();
+            await page.getByRole('button', { name: locale === 'sr' ? 'Nazad na početnu stranu' : 'Back to home page' }).click();
+            await expect.poll(async () => (await cart()).order_lines?.length).toBe(0);
+            await page.reload();
+            await expect.poll(async () => (await cart()).order_lines?.length).toBe(0);
+            expect(errors).toEqual([]);
+        });
+    }
 }
 
 test('free shipping threshold and country change', async ({ page, isMobile }) => {

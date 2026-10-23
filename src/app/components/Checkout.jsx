@@ -28,6 +28,7 @@ const Checkout = ({locale}) => {
 
     const state = useContext(CartContext);
     const [openConfirmationModal, setOpenConfirmationModal] = useState(false);
+    const [orderFailed, setOrderFailed] = useState(false);
 
     const updateShippingByCountry = (countryName) => {
         state.recalculateShippingPrice(countryName);
@@ -101,16 +102,16 @@ const Checkout = ({locale}) => {
                 }
             });
 
-            AxiosInstance.post('orders/create', values)
-                .then(() => {
-                    setOpenConfirmationModal(true);
-                    //clear form
-                    formik.resetForm({
-                        values: initialFormValues,
-                    });
-                    formik.setErrors({});
-                })
-                .catch(() => console.error('Order submission failed')); // Do not log customer data.
+            try {
+                await AxiosInstance.post('orders/create', values);
+                setOrderFailed(false);
+            } catch {
+                setOrderFailed(true);
+            } finally {
+                setOpenConfirmationModal(true);
+                formik.resetForm({ values: initialFormValues });
+                formik.setErrors({});
+            }
         },
     });
 
@@ -150,7 +151,7 @@ const Checkout = ({locale}) => {
 
     return (
         <>
-            <ConfirmationModal setOpen={setOpenConfirmationModal} open={openConfirmationModal} locale={locale}/>
+            <ConfirmationModal setOpen={setOpenConfirmationModal} open={openConfirmationModal} locale={locale} failed={orderFailed}/>
             <div className="bg-white">
                 <main className="relative mx-auto grid max-w-7xl grid-cols-1 gap-x-16 lg:grid-cols-2 lg:px-8 xl:gap-x-48">
                     <h1 className="sr-only">Order information</h1>

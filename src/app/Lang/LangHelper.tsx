@@ -157,6 +157,14 @@ export const getInvalidField = (locale: Locale) => {
     return LangContent[locale].invalidField;
 }
 
+export const getOrderErrorTitle = (locale: Locale) => {
+    return LangContent[locale].orderErrorTitle;
+};
+
+export const getOrderErrorDescription = (locale: Locale) => {
+    return LangContent[locale].orderErrorDescription;
+};
+
 export const getConfirmationTitle = (locale: Locale) => {
     return LangContent[locale].confirmationTitle;
 }
