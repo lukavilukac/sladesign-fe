@@ -368,7 +368,7 @@ const Checkout = ({locale}) => {
                                     </button>
                                 )}
                                 {emailChecked && returningCustomer && (
-                                    <p className="mt-6 text-sm text-gray-700" role="status">
+                                    <p className="mt-6 rounded-lg border border-indigo-100 border-l-4 border-l-indigo-400 bg-indigo-50 px-4 py-3 text-sm leading-6 text-indigo-900" role="status">
                                         {lookupText.returning}
                                     </p>
                                 )}

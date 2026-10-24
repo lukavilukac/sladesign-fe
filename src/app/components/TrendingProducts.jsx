@@ -25,7 +25,7 @@ const TrendingProducts = async ({products, productHref}) => {
                                 </a>
                             </h3>
                             {/*<p className="mt-1 text-sm text-gray-500">{product.color}</p>*/}
-                            <p className="mt-1 text-sm font-medium text-gray-900">{product.price}</p>
+                            <p className="mt-1 text-sm font-medium text-gray-900">{product.price} rsd</p>
                         </div>
                     ))}
                 </div>
