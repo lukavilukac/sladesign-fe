@@ -125,6 +125,8 @@ const Checkout = ({locale}) => {
                             countryCode = phoneCountry.phone;
                             phone = internationalPhone.slice(countryCode.length + 1);
                         }
+                    } else if (internationalPhone.startsWith(countryCode)) {
+                        phone = internationalPhone.slice(countryCode.length);
                     }
                     formik.resetForm({ values: {
                         email_address: email,
