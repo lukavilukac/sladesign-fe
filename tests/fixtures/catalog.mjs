@@ -30,7 +30,12 @@ export function apiResponse(path, locale) {
             }]
         };
     }
-    if (path === '/api/categories') return [category];
+    if (path === '/api/categories') return Array.from({ length: 5 }, (_, index) => index === 0 ? category : {
+        ...category,
+        id: category.id + index,
+        slug: `${category.slug}-${index + 1}`,
+        name: `${category.name} ${index + 1}`
+    });
     if (path === '/api/products' || path.startsWith('/api/products/get-by-category-slug/')) return [product];
     if (path.startsWith('/api/products/find-by-slug/')) return product;
     if (path === '/api/products-and-categories') return [

@@ -25,6 +25,31 @@ for (const locale of ['sr', 'en']) {
     const checkout = locale === 'sr' ? '/porudzbina' : '/checkout';
     const add = locale === 'sr' ? 'Dodaj u Korpu' : 'Add to Cart';
 
+    test(`${locale}: homepage categories wrap after four cards on mobile`, async ({ page, isMobile }) => {
+        test.skip(!isMobile, 'Mobile category grid only');
+        await page.goto(home);
+        const section = page.getByRole('heading', { name: locale === 'sr' ? 'Kupujte po kategorijama' : 'Shop by category', exact: true }).locator('../..');
+        const cards = section.getByRole('link');
+        await expect(cards).toHaveCount(5);
+        for (const width of [320, 390, 768]) {
+            await page.setViewportSize({ width, height: 844 });
+            const boxes = await cards.evaluateAll(elements => elements.map(element => {
+                const { x, y, width, right } = element.getBoundingClientRect();
+                return { x, y, width, right };
+            }));
+            for (const box of boxes) {
+                expect(box.x).toBeGreaterThanOrEqual(0);
+                expect(box.right).toBeLessThanOrEqual(width);
+                expect(Math.abs(box.width - boxes[0].width)).toBeLessThan(1);
+            }
+            expect(boxes.slice(0, 4).every(box => box.y === boxes[0].y)).toBeTruthy();
+            expect(boxes[4].y).toBeGreaterThan(boxes[0].y);
+            expect(await section.evaluate(element => [element, ...Array.from(element.querySelectorAll('*'))].every(node => node.scrollWidth <= node.clientWidth + 1))).toBeTruthy();
+        }
+        await cards.first().click();
+        await expect(page).toHaveURL(new RegExp(`${category}$`));
+    });
+
     test(`${locale}: homepage section order and category descriptions`, async ({ page }) => {
         const fixture = fixtureCatalog(locale);
         await page.goto(home);
@@ -78,6 +103,22 @@ for (const locale of ['sr', 'en']) {
         const panel = page.locator('[id^="headlessui-popover-panel-"]');
         await expect(panel).toBeVisible();
         await expect(panel.getByRole('link').first()).toBeVisible();
+        const rows = panel.getByRole('listitem');
+        await expect(rows).toHaveCount(5);
+        const rowBoxes = await rows.evaluateAll(elements => elements.map(element => {
+            const { x, y, height } = element.getBoundingClientRect();
+            return { x, y, height };
+        }));
+        for (let index = 1; index < rowBoxes.length; index++) {
+            expect(rowBoxes[index].x).toBe(rowBoxes[0].x);
+            expect(rowBoxes[index].y).toBeGreaterThanOrEqual(rowBoxes[index - 1].y + rowBoxes[index - 1].height);
+        }
+        for (const thumbnail of await panel.locator('img').all()) {
+            const box = (await thumbnail.boundingBox())!;
+            expect(box.width).toBe(32);
+            expect(box.height).toBe(32);
+        }
+        await panel.screenshot({ path: test.info().outputPath('mobile-catalog.png') });
         await page.mouse.click(5, 839);
         await expect(panel).toBeHidden();
         await search.click();

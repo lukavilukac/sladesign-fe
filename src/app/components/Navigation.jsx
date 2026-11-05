@@ -109,17 +109,17 @@ const Navigation = ({navigation, locale}) => {
 
                                                                 <div className="relative">
                                                                     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                                                                        <div className="grid grid-cols-2 gap-4 py-6 lg:grid-cols-4 lg:gap-x-8 lg:gap-y-10 lg:py-16">
+                                                                        <ul className="grid grid-cols-1 gap-2 py-4 lg:grid-cols-4 lg:gap-x-8 lg:gap-y-10 lg:py-16">
                                                                             {category.featured.length > 0 &&
                                                                                 category.featured.map(
                                                                                     item => (
-                                                                                        <div
+                                                                                        <li
                                                                                             key={
                                                                                                 item.name
                                                                                             }
-                                                                                            className="group relative"
+                                                                                            className="group relative flex min-h-12 items-center gap-3 py-2 lg:block lg:py-0"
                                                                                         >
-                                                                                            <div className="aspect-h-1 aspect-w-1 overflow-hidden rounded-md bg-gray-100 group-hover:opacity-75">
+                                                                                            <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-gray-100 group-hover:opacity-75 lg:aspect-h-1 lg:aspect-w-1 lg:h-auto lg:w-auto lg:rounded-md">
                                                                                                 <img
                                                                                                     src={assetUrl(item.category_image.path)}
                                                                                                     alt={
@@ -127,12 +127,12 @@ const Navigation = ({navigation, locale}) => {
                                                                                                             .category_image
                                                                                                             .alt
                                                                                                     }
-                                                                                                    className="object-cover object-center"
+                                                                                                    className="h-8 w-8 object-cover object-center lg:h-auto lg:w-auto"
                                                                                                 />
                                                                                             </div>
                                                                                             <a
                                                                                                 href={item.href}
-                                                                                                className="mt-4 block font-medium text-gray-900"
+                                                                                                className="block min-w-0 break-words font-medium text-gray-600 lg:mt-4 lg:text-gray-900"
                                                                                             >
                                                                                                     <span
                                                                                                         className="absolute inset-0 z-10"
@@ -142,10 +142,10 @@ const Navigation = ({navigation, locale}) => {
                                                                                                     item.name
                                                                                                 }
                                                                                             </a>
-                                                                                        </div>
+                                                                                        </li>
                                                                                     )
                                                                                 )}
-                                                                        </div>
+                                                                        </ul>
                                                                     </div>
                                                                 </div>
                                                             </Popover.Panel>
