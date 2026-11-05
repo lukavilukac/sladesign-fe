@@ -17,11 +17,11 @@ export default async function Page() {
                     {/* Hero section */}
                     <Landing locale={locale} />
 
-                    <TrendingProducts  products={data.products} productHref={data.productHref}/>
+                    <ShopByCategory categories={data.categories} categoryHref={data.categoryHref} locale={locale}/>
 
                     <Stimilation locale={locale} />
 
-                    <ShopByCategory categories={data.categories} categoryHref={data.categoryHref} locale={locale}/>
+                    <TrendingProducts  products={data.products} productHref={data.productHref}/>
 
                 </main>
 

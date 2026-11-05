@@ -14,7 +14,7 @@ const LangDropdown = ({locale}: {locale: Locale}) => {
     return (
         <Menu as="div" className="relative inline-block text-left">
             <div>
-                <Menu.Button className="inline-flex w-full justify-center gap-x-1.5 rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
+                <Menu.Button aria-label={locale === 'sr' ? 'Izaberite jezik' : 'Choose language'} className="inline-flex min-h-11 w-full items-center justify-center gap-x-1.5 rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
                     <ReactCountryFlag countryCode={countryCode} style={{
                         fontSize: '1.5em',
                         lineHeight: '1.5em',

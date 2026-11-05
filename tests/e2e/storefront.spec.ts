@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { apiResponse } from '../fixtures/catalog.mjs';
+import { apiResponse, catalog as fixtureCatalog } from '../fixtures/catalog.mjs';
 
 test.beforeEach(async ({ page }) => {
     // Block all external traffic. API reads and order writes are synthetic.
@@ -24,6 +24,92 @@ for (const locale of ['sr', 'en']) {
     const category = locale === 'sr' ? '/kategorije/test-category' : '/categories/test-category';
     const checkout = locale === 'sr' ? '/porudzbina' : '/checkout';
     const add = locale === 'sr' ? 'Dodaj u Korpu' : 'Add to Cart';
+
+    test(`${locale}: homepage section order and category descriptions`, async ({ page }) => {
+        const fixture = fixtureCatalog(locale);
+        await page.goto(home);
+        const categoriesHeading = page.getByRole('heading', { name: locale === 'sr' ? 'Kupujte po kategorijama' : 'Shop by category', exact: true });
+        const trendingHeading = page.getByRole('heading', { name: 'Trending', exact: true });
+        await expect(categoriesHeading).toBeVisible();
+        await expect(trendingHeading).toBeVisible();
+        expect((await categoriesHeading.boundingBox())!.y).toBeLessThan((await trendingHeading.boundingBox())!.y);
+        await page.goto(category);
+        await expect(page.getByRole('heading', { name: fixture.category.name, exact: true })).toBeVisible();
+        await expect(page).toHaveURL(new RegExp(`${category}$`));
+        const card = page.getByRole('heading', { name: fixture.product.name, exact: true }).locator('..');
+        const description = (await card.locator('p').first().innerText()).trim();
+        expect(description.length).toBeLessThanOrEqual(120);
+        expect(description.endsWith('...')).toBeTruthy();
+        expect(fixture.product.description.startsWith(description.slice(0, -3))).toBeTruthy();
+        await page.goto(product);
+        await expect(page.getByText(fixture.product.description, { exact: true })).toBeVisible();
+    });
+
+    test(`${locale}: mobile navigation is evenly spaced without a hamburger`, async ({ page, isMobile }) => {
+        test.skip(!isMobile, 'Mobile navigation only');
+        // Compile both routes before opening the browser to avoid dev-server reloads.
+        await page.request.get(locale === 'sr' ? '/o-meni' : '/about');
+        await page.request.get(home);
+        await page.goto(home);
+        const nav = page.getByRole('navigation', { name: 'Top' });
+        const catalog = nav.getByRole('button', { name: locale === 'sr' ? 'Katalog' : 'Catalog', exact: true });
+        const about = nav.getByRole('link', { name: locale === 'sr' ? 'O meni' : 'About', exact: true });
+        const search = nav.getByRole('button', { name: 'Toggle visibility' });
+        const logo = nav.getByRole('link', { name: 'Sla Design' });
+        const language = nav.getByRole('button', { name: locale === 'sr' ? 'Izaberite jezik' : 'Choose language' });
+        const cart = nav.getByRole('button', { name: /items in cart, view bag/ });
+        await expect(nav.getByRole('button', { name: 'Open menu' })).toHaveCount(0);
+        for (const width of [320, 390, 768]) {
+            await page.setViewportSize({ width, height: 844 });
+            const boxes = [];
+            for (const item of [logo, catalog, about, search, language, cart]) {
+                await expect(item).toBeVisible();
+                boxes.push((await item.boundingBox())!);
+            }
+            const centers = boxes.map(box => box.x + box.width / 2);
+            for (let index = 2; index < centers.length; index++) {
+                expect(Math.abs((centers[index] - centers[index - 1]) - (centers[1] - centers[0]))).toBeLessThan(2);
+            }
+            expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
+        }
+        await page.setViewportSize({ width: 390, height: 844 });
+        await page.screenshot({ path: test.info().outputPath('mobile-navigation.png') });
+        await catalog.click();
+        const panel = page.locator('[id^="headlessui-popover-panel-"]');
+        await expect(panel).toBeVisible();
+        await expect(panel.getByRole('link').first()).toBeVisible();
+        await page.mouse.click(5, 839);
+        await expect(panel).toBeHidden();
+        await search.click();
+        await expect(page.getByRole('combobox')).toBeVisible();
+        await page.keyboard.press('Escape');
+        await page.keyboard.press('Escape');
+        await expect(page.getByRole('combobox')).toBeHidden();
+        await language.click();
+        await expect(page.getByRole('menuitem')).toBeVisible();
+        await page.keyboard.press('Escape');
+        await expect(page.getByRole('menuitem')).toBeHidden();
+        await about.click();
+        await expect(page).toHaveURL(locale === 'sr' ? /\/o-meni$/ : /\/about$/);
+    });
+
+    test(`${locale}: desktop catalog closes on outside click`, async ({ page, isMobile }) => {
+        test.skip(isMobile, 'Desktop catalog only');
+        await page.goto(home);
+        const catalog = page.getByRole('button', { name: locale === 'sr' ? 'Katalog' : 'Catalog', exact: true });
+        await catalog.click();
+        await expect(catalog).toHaveAttribute('aria-expanded', 'true');
+        const panel = page.locator('[id^="headlessui-popover-panel-"]');
+        await expect(panel).toBeVisible();
+        await page.mouse.click(5, page.viewportSize()!.height - 5);
+        await expect(catalog).toHaveAttribute('aria-expanded', 'false');
+        await expect(panel).toBeHidden();
+        await catalog.click();
+        await expect(panel).toBeVisible();
+        await page.keyboard.press('Escape');
+        await expect(panel).toBeHidden();
+        await expect(catalog).toBeFocused();
+    });
 
     test(`${locale}: cheapest modifiers are selected and sorted numerically`, async ({ page }) => {
         await page.goto(locale === 'sr' ? '/proizvod/test-modifiers' : '/product/test-modifiers');
@@ -80,13 +166,16 @@ for (const locale of ['sr', 'en']) {
             await page.keyboard.press('Escape');
         }
         if (isMobile) {
-            await page.getByRole('button', { name: 'Open menu' }).click();
-            await expect(page.getByRole('dialog')).toBeVisible();
-            await page.getByRole('button', { name: 'Close menu' }).click();
+            await page.getByRole('button', { name: locale === 'sr' ? 'Katalog' : 'Catalog', exact: true }).click();
+            await expect(page.locator('[id^="headlessui-popover-panel-"]')).toBeVisible();
+            await page.keyboard.press('Escape');
             await page.goto(category);
             await page.getByRole('button', { name: 'Kategorije' }).click();
-            await expect(page.getByRole('dialog')).toBeVisible();
+            const categoryDialog = page.getByRole('dialog');
+            await expect(categoryDialog.getByRole('heading', { name: 'Kategorije', exact: true })).toBeVisible();
+            await expect(categoryDialog.getByRole('link', { name: locale === 'sr' ? 'Test kategorija' : 'Test category', exact: true })).toBeVisible();
             await page.getByRole('button', { name: 'Close menu' }).click();
+            await expect(categoryDialog).toHaveCount(0);
         }
         expect(errors).toEqual([]);
     });
@@ -107,8 +196,7 @@ for (const locale of ['sr', 'en']) {
             await expect.poll(async () => (await cart()).subTotal).toBe(2400);
             expect((await cart()).order_lines).toHaveLength(2);
             await page.reload();
-            // The current cart trigger is attached to the shopping-bag icon.
-            await page.getByRole('link', { name: /items in cart, view bag/ }).locator('svg').click();
+            await page.getByRole('button', { name: /items in cart, view bag/ }).click();
             const dialog = page.getByRole('dialog');
             await expect(dialog.getByRole('heading', { level: 2 }).first()).toBeVisible();
             await dialog.locator('select').first().selectOption('3');
@@ -146,19 +234,25 @@ for (const locale of ['sr', 'en']) {
     }
 }
 
-test('free shipping threshold and country change', async ({ page, isMobile }) => {
+test('Serbia delivery and free shipping threshold', async ({ page, isMobile }) => {
     const errors: string[] = [];
     page.on('pageerror', error => errors.push(error.message));
     await page.goto('/product/test-product');
-    for (let i = 0; i < 5; i++) await page.getByRole('button', { name: 'Add to Cart', exact: true }).click();
+    for (let i = 0; i < 4; i++) await page.getByRole('button', { name: 'Add to Cart', exact: true }).click();
     await page.goto('/checkout');
     const cart = () => page.evaluate(() => JSON.parse(localStorage.getItem('cart') || '{}'));
-    await expect.poll(async () => (await cart()).subTotal).toBe(5500);
-    await expect.poll(async () => (await cart()).shipping).toBe(0);
+    await expect.poll(async () => (await cart()).subTotal).toBe(4400);
+    await expect.poll(async () => (await cart()).shipping).toBe(500);
     await page.locator('[name="email_address"]').fill('test@example.invalid');
     await page.getByRole('button', { name: 'Next', exact: true }).click();
-    await page.locator('[name="country_name"]').selectOption({ label: 'Germany' });
-    await expect.poll(async () => (await cart()).shipping).toBeGreaterThan(0);
+    await expect(page.locator('[name="country_name"] option')).toHaveText(['Serbia']);
+    await page.goto('/product/test-product');
+    await page.getByRole('button', { name: 'Add to Cart', exact: true }).click();
+    await page.goto('/checkout');
+    await expect.poll(async () => (await cart()).subTotal).toBe(5500);
+    await expect.poll(async () => (await cart()).shipping).toBe(0);
+    await page.reload();
+    await expect.poll(async () => (await cart()).shipping).toBe(0);
     if (isMobile) {
         await page.getByRole('button', { name: /Order total/ }).click();
         await expect(page.locator('[id^="headlessui-popover-panel"]')).toBeVisible();

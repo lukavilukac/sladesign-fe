@@ -10,6 +10,7 @@ import {useParams} from "next/navigation";
 const Categories = ({categories, products}) => {
 
     const params = useParams();
+    const categoryName = categories.find((category) => category.isActive)?.name ?? params.slug;
 
     const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
@@ -83,7 +84,7 @@ const Categories = ({categories, products}) => {
 
                 <div className="flex items-baseline justify-between border-b border-gray-200 pb-6 pt-24">
                     <div className={'lg:w-full lg:grid lg:justify-items-center sm:pr-2'}>
-                        <h3 className={'text-center'}>{params.slug}</h3>
+                        <h3 className={'text-center'}>{categoryName}</h3>
                     </div>
 
                     <div className="flex items-center">
@@ -166,7 +167,11 @@ const Categories = ({categories, products}) => {
                                                             {product.name}
                                                         </a>
                                                     </h3>
-                                                    <p className="text-sm text-gray-500">{product.description}</p>
+                                                    <p className="text-sm text-gray-500">
+                                                        {product.description?.length > 120
+                                                            ? `${product.description.slice(0, 117).trimEnd()}...`
+                                                            : product.description}
+                                                    </p>
                                                     <div className="flex flex-1 flex-col justify-end">
                                                         {/*<p className="text-sm italic text-gray-500">{product.options}</p>*/}
                                                         <p className="text-base font-medium text-gray-900">{product.price} rsd</p>
